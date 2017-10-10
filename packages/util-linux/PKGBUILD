@@ -1,0 +1,41 @@
+pkgname=util-linux
+pkgver=2.30.1
+pkgrel=1
+pkgdesc="Miscellaneous system utilities for Linux"
+arch=('x86_64')
+url="https://www.kernel.org/pub/linux/utils/util-linux/"
+license=('GPL2')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure ADJTIME_PATH=/var/lib/hwclock/adjtime   \
+		--docdir=/usr/share/doc/util-linux-${pkgver} \
+		--disable-chfn-chsh  \
+		--disable-login      \
+		--disable-nologin    \
+		--disable-su         \
+		--disable-setpriv    \
+		--disable-runuser    \
+		--disable-pylibmount \
+		--disable-static     \
+		--without-python     \
+		--without-systemd    \
+		--without-systemdsystemunitdir
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make -k check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    install -vdm755 ${pkgdir}/var/lib/hwclock
+    make DESTDIR=${pkgdir} install
+}

@@ -1,0 +1,11 @@
+pkgname=lfs-bootscripts
+pkgver=20170626
+pkgrel=1
+pkgdesc="scripts to start/stop the LFS system at bootup/shutdown"
+arch=('x86_64')
+source=(${pkgname}-${pkgver}.tar.bz2)
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

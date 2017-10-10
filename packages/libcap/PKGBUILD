@@ -1,0 +1,29 @@
+pkgname=libcap
+pkgver=2.25
+pkgrel=1
+pkgdesc="POSIX 1003.1e capabilities"
+arch=('x86_64')
+url="https://sites.google.com/site/fullycapable/"
+license=('GPL2')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    sed -i '/install.*STALIBNAME/d' libcap/Makefile
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    make
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+
+    make DESTDIR="$pkgdir" RAISE_SETFCAP=no lib=lib prefix=/usr install
+    chmod -v 755 ${pkgdir}/usr/lib/libcap.so
+
+    install -vdm755 ${pkgdir}/lib
+    mv -v ${pkgdir}/usr/lib/libcap.so.* ${pkgdir}/lib
+    ln -sfv ../../lib/$(readlink ${pkgdir}/usr/lib/libcap.so) ${pkgdir}/usr/lib/libcap.so
+}

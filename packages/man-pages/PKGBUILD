@@ -1,0 +1,13 @@
+pkgname=man-pages
+pkgver=4.12
+pkgrel=1
+pkgdesc="Linux man pages"
+arch=('x86_64')
+url="http://man7.org/linux/man-pages/index.html"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

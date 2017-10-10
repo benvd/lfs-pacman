@@ -1,0 +1,36 @@
+pkgname=fakeroot
+pkgver=1.22
+pkgrel=2
+pkgdesc="Tool for simulating superuser privileges"
+arch=('x86_64')
+url="http://packages.debian.org/fakeroot"
+license=('GPL')
+source=(${pkgname}_${pkgver}.orig.tar.bz2
+	silence-dlerror.patch)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    patch -p1 -i "$srcdir"/silence-dlerror.patch
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr \
+		--libdir=/usr/lib/libfakeroot \
+		--disable-static \
+		--with-ipc=sysv
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -dm755 "${pkgdir}/etc/ld.so.conf.d/"
+    echo '/usr/lib/libfakeroot' > "${pkgdir}/etc/ld.so.conf.d/fakeroot.conf"
+}

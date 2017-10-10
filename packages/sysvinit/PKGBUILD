@@ -1,0 +1,25 @@
+pkgname=sysvinit
+pkgver=2.88dsf
+pkgrel=1
+pkgdesc="Programs for controlling the startup, running, and shutdown of the system."
+arch=('x86_64')
+url="https://savannah.nongnu.org/projects/sysvinit"
+license=('GPL2')
+
+source=(${pkgname}-${pkgver}.tar.bz2
+	sysvinit-2.88dsf-consolidated-1.patch)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    patch -Np1 -i ../sysvinit-2.88dsf-consolidated-1.patch
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    make -C src
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make ROOT=${pkgdir} -C src install
+}

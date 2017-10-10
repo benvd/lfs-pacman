@@ -1,0 +1,37 @@
+pkgname=readline
+pkgver=7.0
+pkgrel=1
+pkgdesc="GNU readline library"
+arch=('x86_64')
+url="http://tiswww.case.edu/php/chet/readline/rltop.html"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.gz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    sed -i '/MV.*old/d' Makefile.in
+    sed -i '/{OLDSUFF}/c:' support/shlib-install
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr    \
+		--disable-static \
+		--docdir=/usr/share/doc/readline-7.0
+    make SHLIB_LIBS="-L/tools/lib -lncursesw"
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+
+    make DESTDIR=${pkgdir} SHLIB_LIBS="-L/tools/lib -lncurses" install
+
+    install -vdm755 ${pkgdir}/lib
+    install -vdm755 ${pkgdir}/usr/lib
+    mv -v ${pkgdir}/usr/lib/lib{readline,history}.so.* ${pkgdir}/lib
+    ln -sfv ../../lib/$(readlink ${pkgdir}/usr/lib/libreadline.so) ${pkgdir}/usr/lib/libreadline.so
+    ln -sfv ../../lib/$(readlink ${pkgdir}/usr/lib/libhistory.so ) ${pkgdir}/usr/lib/libhistory.so
+
+    install -vdm755 ${pkgdir}/usr/share/doc
+    install -vm644 doc/*.{ps,pdf,html,dvi} ${pkgdir}/usr/share/doc/readline-7.0
+}

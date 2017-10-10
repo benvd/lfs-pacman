@@ -1,0 +1,28 @@
+pkgname=gawk
+pkgver=4.1.4
+pkgrel=1
+pkgdesc="GNU version of awk"
+arch=('x86_64')
+url="http://www.gnu.org/software/gawk/"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/usr/share/doc/gawk-${pkgver}
+    install -vm644 doc/{awkforai.txt,*.{eps,pdf,jpg}} ${pkgdir}/usr/share/doc/gawk-${pkgver}
+
+}

@@ -1,0 +1,480 @@
+Submitted By:            Bruce Dubbs <bdubbs at linuxfromscratch dot org>
+Date:                    2017-02-07
+Initial Package Version: 4.4
+Upstream Status:         Already in upstream patch repo
+Origin:                  Upstream
+Description:             This patch contains upstream patch numbers 001 thru 012
+
+
+diff -Naur bash-4.4.orig/bashline.c bash-4.4/bashline.c
+--- bash-4.4.orig/bashline.c	2016-08-05 20:44:05.000000000 -0500
++++ bash-4.4/bashline.c	2017-02-07 19:47:19.848288939 -0600
+@@ -142,7 +142,7 @@
+ static rl_icppfunc_t *save_directory_hook __P((void));
+ static void restore_directory_hook __P((rl_icppfunc_t));
+ 
+-static int directory_exists __P((const char *));
++static int directory_exists __P((const char *, int));
+ 
+ static void cleanup_expansion_error __P((void));
+ static void maybe_make_readline_line __P((char *));
+@@ -3102,18 +3102,20 @@
+     rl_directory_rewrite_hook = hookf;
+ }
+ 
+-/* Check whether not the (dequoted) version of DIRNAME, with any trailing slash
+-   removed, exists. */
++/* Check whether not DIRNAME, with any trailing slash removed, exists.  If
++   SHOULD_DEQUOTE is non-zero, we dequote the directory name first. */
+ static int
+-directory_exists (dirname)
++directory_exists (dirname, should_dequote)
+      const char *dirname;
++     int should_dequote;
+ {
+   char *new_dirname;
+   int dirlen, r;
+   struct stat sb;
+ 
+-  /* First, dequote the directory name */
+-  new_dirname = bash_dequote_filename ((char *)dirname, rl_completion_quote_character);
++  /* We save the string and chop the trailing slash because stat/lstat behave
++     inconsistently if one is present. */
++  new_dirname = should_dequote ? bash_dequote_filename ((char *)dirname, rl_completion_quote_character) : savestring (dirname);
+   dirlen = STRLEN (new_dirname);
+   if (new_dirname[dirlen - 1] == '/')
+     new_dirname[dirlen - 1] = '\0';
+@@ -3145,7 +3147,7 @@
+   else if (t = mbschr (local_dirname, '`'))	/* XXX */
+     should_expand_dirname = '`';
+ 
+-  if (should_expand_dirname && directory_exists (local_dirname))
++  if (should_expand_dirname && directory_exists (local_dirname, 0))
+     should_expand_dirname = 0;
+   
+   if (should_expand_dirname)  
+@@ -3155,7 +3157,7 @@
+ 	 have to worry about restoring this setting. */
+       global_nounset = unbound_vars_is_error;
+       unbound_vars_is_error = 0;
+-      wl = expand_prompt_string (new_dirname, 0, W_NOCOMSUB|W_COMPLETE);	/* does the right thing */
++      wl = expand_prompt_string (new_dirname, 0, W_NOCOMSUB|W_NOPROCSUB|W_COMPLETE);	/* does the right thing */
+       unbound_vars_is_error = global_nounset;
+       if (wl)
+ 	{
+@@ -3244,13 +3246,13 @@
+ 	should_expand_dirname = '`';
+     }
+ 
+-  if (should_expand_dirname && directory_exists (local_dirname))
++  if (should_expand_dirname && directory_exists (local_dirname, 1))
+     should_expand_dirname = 0;
+ 
+   if (should_expand_dirname)  
+     {
+       new_dirname = savestring (local_dirname);
+-      wl = expand_prompt_string (new_dirname, 0, W_NOCOMSUB|W_COMPLETE);	/* does the right thing */
++      wl = expand_prompt_string (new_dirname, 0, W_NOCOMSUB|W_NOPROCSUB|W_COMPLETE);	/* does the right thing */
+       if (wl)
+ 	{
+ 	  *dirname = string_list (wl);
+diff -Naur bash-4.4.orig/builtins/evalstring.c bash-4.4/builtins/evalstring.c
+--- bash-4.4.orig/builtins/evalstring.c	2016-08-11 13:18:51.000000000 -0500
++++ bash-4.4/builtins/evalstring.c	2017-02-07 19:47:19.846288923 -0600
+@@ -104,12 +104,9 @@
+ 	  running_trap == 0 &&
+ 	  *bash_input.location.string == '\0' &&
+ 	  command->type == cm_simple &&
+-#if 0
+ 	  signal_is_trapped (EXIT_TRAP) == 0 &&
+ 	  signal_is_trapped (ERROR_TRAP) == 0 &&
+-#else
+ 	  any_signals_trapped () < 0 &&
+-#endif
+ 	  command->redirects == 0 && command->value.Simple->redirects == 0 &&
+ 	  ((command->flags & CMD_TIME_PIPELINE) == 0) &&
+ 	  ((command->flags & CMD_INVERT_RETURN) == 0));
+diff -Naur bash-4.4.orig/builtins/pushd.def bash-4.4/builtins/pushd.def
+--- bash-4.4.orig/builtins/pushd.def	2016-01-25 12:31:49.000000000 -0600
++++ bash-4.4/builtins/pushd.def	2017-02-07 19:47:19.846288923 -0600
+@@ -365,7 +365,7 @@
+ 	break;
+     }
+ 
+-  if (which > directory_list_offset || (directory_list_offset == 0 && which == 0))
++  if (which > directory_list_offset || (which < -directory_list_offset) || (directory_list_offset == 0 && which == 0))
+     {
+       pushd_error (directory_list_offset, which_word ? which_word : "");
+       return (EXECUTION_FAILURE);
+@@ -387,6 +387,11 @@
+ 	 remove that directory from the list and shift the remainder
+ 	 of the list into place. */
+       i = (direction == '+') ? directory_list_offset - which : which;
++      if (i < 0 || i > directory_list_offset)
++	{
++	  pushd_error (directory_list_offset, which_word ? which_word : "");
++	  return (EXECUTION_FAILURE);
++	}
+       free (pushd_directory_list[i]);
+       directory_list_offset--;
+ 
+diff -Naur bash-4.4.orig/builtins/read.def bash-4.4/builtins/read.def
+--- bash-4.4.orig/builtins/read.def	2016-05-16 13:24:56.000000000 -0500
++++ bash-4.4/builtins/read.def	2017-02-07 19:47:19.851288961 -0600
+@@ -181,7 +181,8 @@
+      WORD_LIST *list;
+ {
+   register char *varname;
+-  int size, i, nr, pass_next, saw_escape, eof, opt, retval, code, print_ps2;
++  int size, nr, pass_next, saw_escape, eof, opt, retval, code, print_ps2;
++  volatile int i;
+   int input_is_tty, input_is_pipe, unbuffered_read, skip_ctlesc, skip_ctlnul;
+   int raw, edit, nchars, silent, have_timeout, ignore_delim, fd, lastsig, t_errno;
+   unsigned int tmsec, tmusec;
+diff -Naur bash-4.4.orig/expr.c bash-4.4/expr.c
+--- bash-4.4.orig/expr.c	2015-10-11 13:46:36.000000000 -0500
++++ bash-4.4/expr.c	2017-02-07 19:47:19.849288946 -0600
+@@ -578,24 +578,23 @@
+   rval = cval = explor ();
+   if (curtok == QUES)		/* found conditional expr */
+     {
+-      readtok ();
+-      if (curtok == 0 || curtok == COL)
+-	evalerror (_("expression expected"));
+       if (cval == 0)
+ 	{
+ 	  set_noeval = 1;
+ 	  noeval++;
+ 	}
+ 
++      readtok ();
++      if (curtok == 0 || curtok == COL)
++	evalerror (_("expression expected"));
++
+       val1 = EXP_HIGHEST ();
+ 
+       if (set_noeval)
+ 	noeval--;
+       if (curtok != COL)
+ 	evalerror (_("`:' expected for conditional expression"));
+-      readtok ();
+-      if (curtok == 0)
+-	evalerror (_("expression expected"));
++
+       set_noeval = 0;
+       if (cval)
+  	{
+@@ -603,7 +602,11 @@
+ 	  noeval++;
+  	}
+ 
++      readtok ();
++      if (curtok == 0)
++	evalerror (_("expression expected"));
+       val2 = expcond ();
++
+       if (set_noeval)
+ 	noeval--;
+       rval = cval ? val1 : val2;
+diff -Naur bash-4.4.orig/jobs.c bash-4.4/jobs.c
+--- bash-4.4.orig/jobs.c	2016-08-23 15:38:44.000000000 -0500
++++ bash-4.4/jobs.c	2017-02-07 19:47:19.844288908 -0600
+@@ -453,6 +453,21 @@
+     discard_pipeline (disposer);
+ }
+ 
++void
++discard_last_procsub_child ()
++{
++  PROCESS *disposer;
++  sigset_t set, oset;
++
++  BLOCK_CHILD (set, oset);
++  disposer = last_procsub_child;
++  last_procsub_child = (PROCESS *)NULL;
++  UNBLOCK_CHILD (oset);
++
++  if (disposer)
++    discard_pipeline (disposer);
++}
++
+ struct pipeline_saver *
+ alloc_pipeline_saver ()
+ {
+diff -Naur bash-4.4.orig/jobs.h bash-4.4/jobs.h
+--- bash-4.4.orig/jobs.h	2016-04-27 09:35:51.000000000 -0500
++++ bash-4.4/jobs.h	2017-02-07 19:47:19.844288908 -0600
+@@ -190,6 +190,7 @@
+ extern void making_children __P((void));
+ extern void stop_making_children __P((void));
+ extern void cleanup_the_pipeline __P((void));
++extern void discard_last_procsub_child __P((void));
+ extern void save_pipeline __P((int));
+ extern PROCESS *restore_pipeline __P((int));
+ extern void start_pipeline __P((void));
+diff -Naur bash-4.4.orig/lib/glob/sm_loop.c bash-4.4/lib/glob/sm_loop.c
+--- bash-4.4.orig/lib/glob/sm_loop.c	2016-04-10 10:23:21.000000000 -0500
++++ bash-4.4/lib/glob/sm_loop.c	2017-02-07 19:47:19.843288901 -0600
+@@ -330,6 +330,12 @@
+   for (pc = 0; p[pc]; pc++)
+     if (p[pc] == L('.') && p[pc+1] == L(']'))
+       break;
++   if (p[pc] == 0)
++    {
++      if (vp)
++	*vp = INVALID;
++      return (p + pc);
++    }
+    val = COLLSYM (p, pc);
+    if (vp)
+      *vp = val;
+@@ -483,6 +489,9 @@
+       c = *p++;
+       c = FOLD (c);
+ 
++      if (c == L('\0'))
++	return ((test == L('[')) ? savep : (CHAR *)0);
++
+       if ((flags & FNM_PATHNAME) && c == L('/'))
+ 	/* [/] can never match when matching a pathname.  */
+ 	return (CHAR *)0;
+diff -Naur bash-4.4.orig/lib/readline/history.c bash-4.4/lib/readline/history.c
+--- bash-4.4.orig/lib/readline/history.c	2015-12-28 12:50:31.000000000 -0600
++++ bash-4.4/lib/readline/history.c	2017-02-07 19:47:19.850288954 -0600
+@@ -57,6 +57,8 @@
+ /* How big to make the_history when we first allocate it. */
+ #define DEFAULT_HISTORY_INITIAL_SIZE	502
+ 
++#define MAX_HISTORY_INITIAL_SIZE	8192
++
+ /* The number of slots to increase the_history by. */
+ #define DEFAULT_HISTORY_GROW_SIZE 50
+ 
+@@ -277,6 +279,7 @@
+      const char *string;
+ {
+   HIST_ENTRY *temp;
++  int new_length;
+ 
+   if (history_stifled && (history_length == history_max_entries))
+     {
+@@ -293,13 +296,9 @@
+ 
+       /* Copy the rest of the entries, moving down one slot.  Copy includes
+ 	 trailing NULL.  */
+-#if 0
+-      for (i = 0; i < history_length; i++)
+-	the_history[i] = the_history[i + 1];
+-#else
+       memmove (the_history, the_history + 1, history_length * sizeof (HIST_ENTRY *));
+-#endif
+ 
++      new_length = history_length;
+       history_base++;
+     }
+   else
+@@ -307,11 +306,13 @@
+       if (history_size == 0)
+ 	{
+ 	  if (history_stifled && history_max_entries > 0)
+-	    history_size = history_max_entries + 2;
++	    history_size = (history_max_entries > MAX_HISTORY_INITIAL_SIZE)
++				? MAX_HISTORY_INITIAL_SIZE
++				: history_max_entries + 2;
+ 	  else
+ 	    history_size = DEFAULT_HISTORY_INITIAL_SIZE;
+ 	  the_history = (HIST_ENTRY **)xmalloc (history_size * sizeof (HIST_ENTRY *));
+-	  history_length = 1;
++	  new_length = 1;
+ 	}
+       else
+ 	{
+@@ -321,14 +322,15 @@
+ 	      the_history = (HIST_ENTRY **)
+ 		xrealloc (the_history, history_size * sizeof (HIST_ENTRY *));
+ 	    }
+-	  history_length++;
++	  new_length = history_length + 1;
+ 	}
+     }
+ 
+   temp = alloc_history_entry ((char *)string, hist_inittime ());
+ 
+-  the_history[history_length] = (HIST_ENTRY *)NULL;
+-  the_history[history_length - 1] = temp;
++  the_history[new_length] = (HIST_ENTRY *)NULL;
++  the_history[new_length - 1] = temp;
++  history_length = new_length;
+ }
+ 
+ /* Change the time stamp of the most recent history entry to STRING. */
+diff -Naur bash-4.4.orig/patchlevel.h bash-4.4/patchlevel.h
+--- bash-4.4.orig/patchlevel.h	2016-06-22 13:51:03.000000000 -0500
++++ bash-4.4/patchlevel.h	2017-02-07 19:47:19.853288976 -0600
+@@ -25,6 +25,6 @@
+    regexp `^#define[ 	]*PATCHLEVEL', since that's what support/mkversion.sh
+    looks for to find the patch level (for the sccs version string). */
+ 
+-#define PATCHLEVEL 0
++#define PATCHLEVEL 12
+ 
+ #endif /* _PATCHLEVEL_H_ */
+diff -Naur bash-4.4.orig/sig.c bash-4.4/sig.c
+--- bash-4.4.orig/sig.c	2016-02-11 14:02:45.000000000 -0600
++++ bash-4.4/sig.c	2017-02-07 19:47:19.852288969 -0600
+@@ -585,7 +585,8 @@
+ #if defined (JOB_CONTROL)
+   if (sig == SIGHUP && (interactive || (subshell_environment & (SUBSHELL_COMSUB|SUBSHELL_PROCSUB))))
+     hangup_all_jobs ();
+-  end_job_control ();
++  if ((subshell_environment & (SUBSHELL_COMSUB|SUBSHELL_PROCSUB)) == 0)
++    end_job_control ();
+ #endif /* JOB_CONTROL */
+ 
+ #if defined (PROCESS_SUBSTITUTION)
+diff -Naur bash-4.4.orig/subst.c bash-4.4/subst.c
+--- bash-4.4.orig/subst.c	2016-08-30 15:46:38.000000000 -0500
++++ bash-4.4/subst.c	2017-02-07 19:47:19.853288976 -0600
+@@ -2825,11 +2825,15 @@
+ 
+ /* Parse a single word from STRING, using SEPARATORS to separate fields.
+    ENDPTR is set to the first character after the word.  This is used by
+-   the `read' builtin.  This is never called with SEPARATORS != $IFS;
+-   it should be simplified.
++   the `read' builtin.
++   
++   This is never called with SEPARATORS != $IFS, and takes advantage of that.
+ 
+    XXX - this function is very similar to list_string; they should be
+ 	 combined - XXX */
++
++#define islocalsep(c)	(local_cmap[(unsigned char)(c)] != 0)
++
+ char *
+ get_word_from_string (stringp, separators, endptr)
+      char **stringp, *separators, **endptr;
+@@ -2837,6 +2841,7 @@
+   register char *s;
+   char *current_word;
+   int sindex, sh_style_split, whitesep, xflags;
++  unsigned char local_cmap[UCHAR_MAX+1];	/* really only need single-byte chars here */
+   size_t slen;
+ 
+   if (!stringp || !*stringp || !**stringp)
+@@ -2846,20 +2851,23 @@
+ 				 separators[1] == '\t' &&
+ 				 separators[2] == '\n' &&
+ 				 separators[3] == '\0';
+-  for (xflags = 0, s = ifs_value; s && *s; s++)
++  memset (local_cmap, '\0', sizeof (local_cmap));
++  for (xflags = 0, s = separators; s && *s; s++)
+     {
+       if (*s == CTLESC) xflags |= SX_NOCTLESC;
+       if (*s == CTLNUL) xflags |= SX_NOESCCTLNUL;
++      local_cmap[(unsigned char)*s] = 1;	/* local charmap of separators */
+     }
+ 
+   s = *stringp;
+   slen = 0;
+ 
+   /* Remove sequences of whitespace at the beginning of STRING, as
+-     long as those characters appear in IFS. */
+-  if (sh_style_split || !separators || !*separators)
++     long as those characters appear in SEPARATORS.  This happens if
++     SEPARATORS == $' \t\n' or if IFS is unset. */
++  if (sh_style_split || separators == 0)
+     {
+-      for (; *s && spctabnl (*s) && isifs (*s); s++);
++      for (; *s && spctabnl (*s) && islocalsep (*s); s++);
+ 
+       /* If the string is nothing but whitespace, update it and return. */
+       if (!*s)
+@@ -2878,9 +2886,9 @@
+ 
+      This obeys the field splitting rules in Posix.2. */
+   sindex = 0;
+-  /* Don't need string length in ADVANCE_CHAR or string_extract_verbatim
+-     unless multibyte chars are possible. */
+-  slen = (MB_CUR_MAX > 1) ? STRLEN (s) : 1;
++  /* Don't need string length in ADVANCE_CHAR unless multibyte chars are
++     possible, but need it in string_extract_verbatim for bounds checking */
++  slen = STRLEN (s);
+   current_word = string_extract_verbatim (s, slen, &sindex, separators, xflags);
+ 
+   /* Set ENDPTR to the first character after the end of the word. */
+@@ -2899,19 +2907,19 @@
+ 
+   /* Now skip sequences of space, tab, or newline characters if they are
+      in the list of separators. */
+-  while (s[sindex] && spctabnl (s[sindex]) && isifs (s[sindex]))
++  while (s[sindex] && spctabnl (s[sindex]) && islocalsep (s[sindex]))
+     sindex++;
+ 
+   /* If the first separator was IFS whitespace and the current character is
+      a non-whitespace IFS character, it should be part of the current field
+      delimiter, not a separate delimiter that would result in an empty field.
+      Look at POSIX.2, 3.6.5, (3)(b). */
+-  if (s[sindex] && whitesep && isifs (s[sindex]) && !spctabnl (s[sindex]))
++  if (s[sindex] && whitesep && islocalsep (s[sindex]) && !spctabnl (s[sindex]))
+     {
+       sindex++;
+       /* An IFS character that is not IFS white space, along with any adjacent
+ 	 IFS white space, shall delimit a field. */
+-      while (s[sindex] && spctabnl (s[sindex]) && isifs (s[sindex]))
++      while (s[sindex] && spctabnl (s[sindex]) && islocalsep(s[sindex]))
+ 	sindex++;
+     }
+ 
+@@ -5808,10 +5816,7 @@
+     {
+ #if defined (JOB_CONTROL)
+       if (last_procsub_child)
+-	{
+-	  discard_pipeline (last_procsub_child);
+-	  last_procsub_child = (PROCESS *)NULL;
+-	}
++	discard_last_procsub_child ();
+       last_procsub_child = restore_pipeline (0);
+ #endif
+ 
+@@ -5931,6 +5936,7 @@
+   char *istring, buf[128], *bufp, *s;
+   int istring_index, istring_size, c, tflag, skip_ctlesc, skip_ctlnul;
+   ssize_t bufn;
++  int nullbyte;
+ 
+   istring = (char *)NULL;
+   istring_index = istring_size = bufn = tflag = 0;
+@@ -5938,6 +5944,8 @@
+   for (skip_ctlesc = skip_ctlnul = 0, s = ifs_value; s && *s; s++)
+     skip_ctlesc |= *s == CTLESC, skip_ctlnul |= *s == CTLNUL;
+ 
++  nullbyte = 0;
++
+   /* Read the output of the command through the pipe.  This may need to be
+      changed to understand multibyte characters in the future. */
+   while (1)
+@@ -5956,7 +5964,11 @@
+       if (c == 0)
+ 	{
+ #if 1
+-	  internal_warning ("%s", _("command substitution: ignored null byte in input"));
++	  if (nullbyte == 0)
++	    {
++	      internal_warning ("%s", _("command substitution: ignored null byte in input"));
++	      nullbyte = 1;
++	    }
+ #endif
+ 	  continue;
+ 	}
+@@ -9454,6 +9466,10 @@
+ 		tword->flags |= word->flags & (W_ASSIGNARG|W_ASSIGNRHS);	/* affects $@ */
+ 	      if (word->flags & W_COMPLETE)
+ 		tword->flags |= W_COMPLETE;	/* for command substitutions */
++	      if (word->flags & W_NOCOMSUB)
++		tword->flags |= W_NOCOMSUB;
++	      if (word->flags & W_NOPROCSUB)
++		tword->flags |= W_NOPROCSUB;
+ 
+ 	      temp = (char *)NULL;
+ 

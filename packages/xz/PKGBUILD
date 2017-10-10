@@ -1,0 +1,33 @@
+pkgname=xz
+pkgver=5.2.3
+pkgrel=1
+pkgdesc="Library and command line tools for XZ and LZMA compressed files"
+arch=('x86_64')
+url="http://tukaani.org/xz/"
+license=('custom' 'gpl' 'LGPL')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr    \
+		--disable-static \
+		--docdir=/usr/share/doc/xz-${pkgver}
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/bin
+    install -vdm755 ${pkgdir}/lib
+    install -vdm755 ${pkgdir}/usr/lib
+    mv -v ${pkgdir}/usr/bin/{lzma,unlzma,lzcat,xz,unxz,xzcat} ${pkgdir}/bin
+    mv -v ${pkgdir}/usr/lib/liblzma.so.* ${pkgdir}/lib
+    ln -svf ../../lib/$(readlink ${pkgdir}/usr/lib/liblzma.so) ${pkgdir}/usr/lib/liblzma.so
+}

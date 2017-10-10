@@ -1,0 +1,35 @@
+pkgname=bash
+pkgver=4.4
+pkgrel=1
+pkgdesc="The GNU Bourne Again shell"
+arch=('x86_64')
+url="http://www.gnu.org/software/bash/bash.html"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.gz
+	bash-4.4-upstream_fixes-1.patch)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    patch -Np1 -i ../bash-4.4-upstream_fixes-1.patch
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr                          \
+		--docdir=/usr/share/doc/bash-${pkgver} \
+		--without-bash-malloc                  \
+		--with-installed-readline
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+    install -vdm755 ${pkgdir}/bin
+    mv -vf ${pkgdir}/usr/bin/bash ${pkgdir}/bin
+}

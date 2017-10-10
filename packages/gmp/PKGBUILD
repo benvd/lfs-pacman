@@ -1,0 +1,29 @@
+pkgname=gmp
+pkgver=6.1.2
+pkgrel=1
+pkgdesc="A free library for arbitrary precision arithmetic"
+arch=('x86_64')
+url="http://gmplib.org/"
+license=('GPL' 'LGPL3')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr    \
+		--enable-cxx     \
+		--disable-static \
+		--docdir=/usr/share/doc/gmp-6.1.2
+    make
+    make html
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+    make DESTDIR=${pkgdir} install-html
+}

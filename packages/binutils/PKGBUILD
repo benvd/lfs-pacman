@@ -1,0 +1,36 @@
+pkgname=binutils
+pkgver=2.29
+pkgrel=1
+pkgdesc="A set of programs to assemble and manipulate binary and object files"
+arch=('x86_64')
+url="http://www.gnu.org/software/binutils/"
+license=('GPL')
+backup=()
+source=(${pkgname}-${pkgver}.tar.bz2)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+
+    mkdir -v build
+    cd build
+
+    ../configure --prefix=/usr       \
+		 --enable-gold       \
+		 --enable-ld=default \
+		 --enable-plugins    \
+		 --enable-shared     \
+		 --disable-werror    \
+		 --with-system-zlib
+
+    make tooldir=/usr
+}
+
+check() {
+   cd "${pkgname}-${pkgver}/build"
+   make -k check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}/build"
+    make prefix=${pkgdir}/usr tooldir=${pkgdir}/usr install
+}

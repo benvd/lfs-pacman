@@ -1,0 +1,59 @@
+pkgname=glibc
+pkgver=2.26
+pkgrel=1
+pkgdesc="GNU C Library"
+arch=('x86_64')
+url="http://www.gnu.org/software/libc"
+license=('GPL', 'LGPL')
+backup=(etc/ld.so.conf)
+source=(${pkgname}-${pkgver}.tar.xz
+	glibc-2.26-fhs-1.patch
+	nsswitch.conf
+	ld.so.conf)
+install=glibc.install
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    patch -Np1 -i ../glibc-2.26-fhs-1.patch
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+
+    mkdir -v build
+    cd build
+
+    GCC_INCDIR=/usr/lib/gcc/x86_64-pc-linux-gnu/7.2.0/include
+    CC="gcc -isystem $GCC_INCDIR -isystem /usr/include" \
+    ../configure --prefix=/usr                          \
+                 --disable-werror                       \
+		 --enable-kernel=3.2                    \
+		 --enable-stack-protector=strong        \
+		 libc_cv_slibdir=/lib
+    unset GCC_INCDIR
+    make
+}
+
+check() {
+     cd "${pkgname}-${pkgver}"/build
+     make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"/build
+
+    install -v -dm755 ${pkgdir}/etc
+    touch ${pkgdir}/etc/ld.so.conf
+    make install_root=${pkgdir} install
+
+    install -v -dm755 ${pkgdir}/etc/nsdc
+    install -v -m644 ${srcdir}/${pkgname}-${pkgver}/nscd/nscd.conf ${pkgdir}/etc/nscd.conf
+    install -v -dm755 ${pkgdir}/var/cache/nscd
+
+    install -v -dm755 ${pkgdir}/usr/lib/locale
+
+    install -v -m644 ${srcdir}/nsswitch.conf ${pkgdir}/etc/nsswitch.conf
+
+    install -v -m644 ${srcdir}/ld.so.conf ${pkgdir}/etc/
+    install -v -dm755 ${pkgdir}/etc/ld.so.conf.d
+}

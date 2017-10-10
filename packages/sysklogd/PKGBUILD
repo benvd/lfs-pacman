@@ -1,0 +1,28 @@
+pkgname=sysklogd
+pkgver=1.5.1
+pkgrel=1
+pkgdesc="Programs for logging system messages, such as unusual kernel events."
+arch=('x86_64')
+url="http://www.infodrom.org/projects/sysklogd/"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.gz
+	sysklogd-1.5.1-destdir-1.patch)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+
+    sed -i '/Error loading kernel symbols/{n;n;d}' ksym_mod.c
+    sed -i 's/union wait/int/' syslogd.c
+
+    patch -Np1 -i ../sysklogd-1.5.1-destdir-1.patch
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    make
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} BINDIR=/sbin install
+}

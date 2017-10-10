@@ -1,0 +1,19 @@
+pkgname=groff
+pkgver=1.22.3
+pkgrel=1
+pkgdesc="GNU troff text-formatting system"
+arch=('x86_64')
+url="http://www.gnu.org/software/groff/groff.html"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.gz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    PAGE=A4 ./configure --prefix=/usr
+    make -j1
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

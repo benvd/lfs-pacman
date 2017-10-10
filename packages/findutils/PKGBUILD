@@ -1,0 +1,38 @@
+pkgname=findutils
+pkgver=4.6.0
+pkgrel=1
+pkgdesc="GNU utilities to locate files"
+arch=('x86_64')
+url="http://www.gnu.org/software/findutils"
+license=('GPL3')
+source=(${pkgname}-${pkgver}.tar.gz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+
+    # Suppress a test which on some machines can loop forever.
+    sed -i 's/test-lock..EXEEXT.//' tests/Makefile.in
+
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr --localstatedir=/var/lib/locate
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/bin
+    mv -v ${pkgdir}/usr/bin/find ${pkgdir}/bin
+
+    sed 's|find:=${BINDIR}|find:=/bin|' ${pkgdir}/usr/bin/updatedb > ${srcdir}/updatedb
+    install -vm644 ${srcdir}/updatedb ${pkgdir}/usr/bin/updatedb
+}

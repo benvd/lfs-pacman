@@ -1,0 +1,19 @@
+pkgname=bison
+pkgver=3.0.4
+pkgrel=1
+pkgdesc="The GNU general-purpose parser generator"
+arch=('x86_64')
+url="http://www.gnu.org/software/bison/bison.html"
+license=('GPL3')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr --docdir=/usr/share/doc/bison-${pkgver}
+    make
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

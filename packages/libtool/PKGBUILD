@@ -1,0 +1,24 @@
+pkgname=libtool
+pkgver=2.4.6
+pkgrel=1
+pkgdesc="A generic library support script"
+arch=('x86_64')
+url="http://www.gnu.org/software/libtool"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

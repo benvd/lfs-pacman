@@ -1,0 +1,24 @@
+pkgname=libpipeline
+pkgver=1.4.2
+pkgrel=1
+pkgdesc="a C library for manipulating pipelines of subprocesses in a flexible and convenient way"
+arch=('x86_64')
+url="http://libpipeline.nongnu.org/"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.gz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

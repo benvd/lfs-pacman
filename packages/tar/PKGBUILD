@@ -1,0 +1,26 @@
+pkgname=tar
+pkgver=1.29
+pkgrel=1
+pkgdesc="Utility used to store, backup, and transport files"
+arch=('x86_64')
+url="https://www.gnu.org/software/tar/tar.html"
+license=('GPL3')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr \
+		--bindir=/bin
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+    make DESTDIR=${pkgdir} -C doc install-html docdir=/usr/share/doc/tar-${pkgver}
+}

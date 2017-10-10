@@ -1,0 +1,42 @@
+pkgname=procps-ng
+pkgver=3.3.12
+pkgrel=1
+pkgdesc="Utilities for monitoring your system and its processes"
+arch=('x86_64')
+url="https://gitlab.com/procps-ng/procps"
+license=('GPL' 'LGPL')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+
+    sed -i -r 's|(pmap_initname)\\\$|\1|' testsuite/pmap.test/pmap.exp
+    sed -i '/set tty/d' testsuite/pkill.test/pkill.exp
+    rm testsuite/pgrep.test/pgrep.exp
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr                               \
+		--exec-prefix=                              \
+		--libdir=/usr/lib                           \
+		--docdir=/usr/share/doc/procps-ng-${pkgver} \
+		--disable-static                            \
+		--disable-kill
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/lib
+    install -vdm755 ${pkgdir}/usr/lib
+    mv -v ${pkgdir}/usr/lib/libprocps.so.* ${pkgdir}/lib
+    ln -sfv ../../lib/$(readlink ${pkgdir}/usr/lib/libprocps.so) ${pkgdir}/usr/lib/libprocps.so
+}

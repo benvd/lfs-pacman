@@ -1,0 +1,33 @@
+pkgname=gettext
+pkgver=0.19.8.1
+pkgrel=1
+pkgdesc="GNU internationalization library"
+arch=('x86_64')
+url="http://www.gnu.org/software/gettext/"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    sed -i '/^TESTS =/d' gettext-runtime/tests/Makefile.in
+    sed -i 's/test-lock..EXEEXT.//' gettext-tools/gnulib-tests/Makefile.in
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr    \
+		--disable-static \
+		--docdir=/usr/share/doc/gettext-${pkgver}
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+    chmod -v 0755 ${pkgdir}/usr/lib/preloadable_libintl.so
+}

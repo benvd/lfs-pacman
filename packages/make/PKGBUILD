@@ -1,0 +1,25 @@
+pkgname=make
+pkgver=4.2.1
+pkgrel=1
+pkgdesc="GNU make utility to maintain groups of programs"
+arch=('x86_64')
+url="http://www.gnu.org/software/make"
+license=('GPL3')
+backup=()
+source=(${pkgname}-${pkgver}.tar.bz2)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make PERL5LIB=$PWD/tests/ check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

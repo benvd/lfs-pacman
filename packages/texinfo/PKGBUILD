@@ -1,0 +1,25 @@
+pkgname=texinfo
+pkgver=6.4
+pkgrel=1
+pkgdesc="GNU documentation system for on-line information and printed output"
+arch=('x86_64')
+url="http://www.gnu.org/software/texinfo/"
+license=('GPL3')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr --disable-static
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+    make DESTDIR=${pkgdir} TEXMF=/usr/share/texmf install-tex
+}

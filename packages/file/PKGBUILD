@@ -1,0 +1,25 @@
+pkgname=file
+pkgver=5.31
+pkgrel=1
+pkgdesc="File type identification utility"
+arch=('x86_64')
+url="https://www.darwinsys.com/file/"
+license=('custom')
+backup=()
+source=(${pkgname}-${pkgver}.tar.gz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+}

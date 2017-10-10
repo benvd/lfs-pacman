@@ -1,0 +1,46 @@
+pkgname=coreutils
+pkgver=8.27
+pkgrel=1
+pkgdesc="The basic file, shell and text manipulation utilities of the GNU operating system"
+arch=('x86_64')
+url="https://www.gnu.org/software/coreutils/"
+license=('GPL3')
+source=(${pkgname}-${pkgver}.tar.xz
+	coreutils-8.27-i18n-1.patch)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    patch -Np1 -i ../coreutils-8.27-i18n-1.patch
+    sed -i '/test.lock/s/^/#/' gnulib-tests/gnulib.mk
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure       \
+        --prefix=/usr \
+        --enable-no-install-program=kill,uptime
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make RUN_EXPENSIVE_TESTS=yes check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/bin
+    install -vdm755 ${pkgdir}/usr/sbin
+    install -vdm755 ${pkgdir}/usr/share/man/man8
+    mv -v ${pkgdir}/usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo} ${pkgdir}/bin
+    mv -v ${pkgdir}/usr/bin/{false,ln,ls,mkdir,mknod,mv,pwd,rm} ${pkgdir}/bin
+    mv -v ${pkgdir}/usr/bin/{rmdir,stty,sync,true,uname} ${pkgdir}/bin
+    mv -v ${pkgdir}/usr/bin/chroot ${pkgdir}/usr/sbin
+    install -vm644 ${pkgdir}/usr/share/man/man1/chroot.1 ${pkgdir}/usr/share/man/man8/chroot.8
+    sed s/\"1\"/\"8\"/1 ${pkgdir}/usr/share/man/man8/chroot.8 > ${srcdir}/chroot.8
+    install -vm644 ${srcdir}/chroot.8 ${pkgdir}/usr/share/man/man8/chroot.8
+
+    mv -v ${pkgdir}/usr/bin/{head,sleep,nice,test,[} ${pkgdir}/bin
+}

@@ -1,0 +1,42 @@
+pkgname=perl
+pkgver=5.26.0
+pkgrel=1
+pkgdesc="A highly capable, feature-rich programming language"
+arch=('x86_64')
+url="http://www.perl.org/"
+license=('GPL' 'PerlArtistic')
+source=(${pkgname}-${pkgver}.tar.xz)
+
+build() {
+    cd "${pkgname}-${pkgver}"
+
+    export BUILD_ZLIB=False
+    export BUILD_BZIP2=0
+
+    sh Configure -des -Dprefix=/usr                 \
+                      -Dvendorprefix=/usr           \
+		      -Dman1dir=/usr/share/man/man1 \
+                      -Dman3dir=/usr/share/man/man3 \
+                      -Dpager="/usr/bin/less -isR"  \
+                      -Duseshrplib                  \
+		      -Dusethreads
+    make
+
+    unset BUILD_ZLIB BUILD_BZIP2
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make -k test 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+
+    export BUILD_ZLIB=False
+    export BUILD_BZIP2=0
+    
+    make DESTDIR=${pkgdir} install
+
+    unset BUILD_ZLIB BUILD_BZIP2
+}

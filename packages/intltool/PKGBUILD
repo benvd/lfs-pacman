@@ -1,0 +1,30 @@
+pkgname=intltool
+pkgver=0.51.0
+pkgrel=1
+pkgdesc="The internationalization tool collection"
+arch=('x86_64')
+url="https://launchpad.net/intltool"
+license=('GPl')
+source=(${pkgname}-${pkgver}.tar.gz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    sed -i 's:\\\${:\\\$\\{:' intltool-update.in
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+    install -v -Dm644 doc/I18N-HOWTO ${pkgdir}/usr/share/doc/intltool-${pkgver}/I18N-HOWTO
+}

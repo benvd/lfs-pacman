@@ -1,0 +1,54 @@
+pkgname=eudev
+pkgver=3.2.2
+pkgrel=1
+pkgdesc="Programs for dynamic creation of device nodes"
+arch=('x86_64')
+url="https://wiki.gentoo.org/wiki/Project:Eudev"
+license=('GPL2')
+source=(${pkgname}-${pkgver}.tar.gz
+	udev-lfs-20140408.tar.bz2
+	config.cache)
+install=eudev.install
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+
+    sed -r -i 's|/usr(/bin/test)|\1|' test/udev-test.pl
+
+    sed -i '/keyboard_lookup_key/d' src/udev/udev-builtin-keyboard.c
+
+    cp ${srcdir}/config.cache .
+    ls -l config.cache
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr           \
+		--bindir=/sbin          \
+		--sbindir=/sbin         \
+		--libdir=/usr/lib       \
+		--sysconfdir=/etc       \
+		--libexecdir=/lib       \
+		--with-rootprefix=      \
+		--with-rootlibdir=/lib  \
+		--enable-manpages       \
+		--disable-static        \
+		--config-cache
+    LIBRARY_PATH=/tools/lib make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make LD_LIBRARY_PATH=/tools/lib check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} LD_LIBRARY_PATH=/tools/lib install
+
+    cd "${srcdir}"
+    make DESTDIR=${pkgdir} -f udev-lfs-20140408/Makefile.lfs install
+
+    install -vdm755 ${pkgdir}/lib/udev/rules.d
+    install -vdm755 ${pkgdir}/etc/udev/rules.d
+}

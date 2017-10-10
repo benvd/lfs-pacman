@@ -1,0 +1,21 @@
+pkgname=linux-headers
+pkgver=4.12.7
+pkgrel=1
+pkgdesc="Kernel headers sanitized for use in userspace"
+arch=('x86_64')
+url="https://www.kernel.org"
+license=('GPL2')
+source=(linux-${pkgver}.tar.xz)
+
+build() {
+    cd "linux-${pkgver}"
+    make mrproper
+    make INSTALL_HDR_PATH=dest headers_install
+}
+
+package() {
+    cd "linux-${pkgver}"
+    find dest/include \( -name .install -o -name ..install.cmd \) -delete
+    install -vdm755 ${pkgdir}/usr/include
+    cp -rv dest/include/* ${pkgdir}/usr/include
+}

@@ -1,0 +1,32 @@
+pkgname=expat
+pkgver=2.2.3
+pkgrel=1
+pkgdesc="An XML parser library"
+arch=('x86_64')
+url="http://expat.sourceforge.net/"
+license=('custom')
+source=(${pkgname}-${pkgver}.tar.bz2)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    sed -i 's|usr/bin/env |bin/|' run.sh.in
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr --disable-static
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/usr/share/doc/expat-${pkgver}
+    install -vm644 doc/*.{html,png,css} ${pkgdir}/usr/share/doc/expat-${pkgver}
+}

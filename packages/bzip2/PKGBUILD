@@ -1,0 +1,42 @@
+pkgname=bzip2
+pkgver=1.0.6
+pkgrel=1
+pkgdesc="A high-quality data compression program"
+arch=('x86_64')
+url="http://sources.redhat.com/bzip2"
+license=('custom')
+source=(${pkgname}-${pkgver}.tar.gz
+	bzip2-1.0.6-install_docs-1.patch)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    
+    patch -Np1 -i ../bzip2-1.0.6-install_docs-1.patch
+
+    sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+
+    sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    make -f Makefile-libbz2_so
+    make clean
+    make
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make PREFIX=${pkgdir}/usr install
+
+    install -vdm755 ${pkgdir}/bin
+    install -vdm755 ${pkgdir}/lib
+    install -vdm755 ${pkgdir}/usr/lib
+
+    install -vm755 bzip2-shared ${pkgdir}/bin/bzip2
+    cp -av libbz2.so.${pkgver} ${pkgdir}/lib
+    ln -sv ../../lib/libbz2.so.${pkgver} ${pkgdir}/usr/lib/libbz2.so
+    rm -v ${pkgdir}/usr/bin/{bunzip2,bzcat,bzip2}
+    ln -sv bzip2 ${pkgdir}/bin/bunzip2
+    ln -sv bzip2 ${pkgdir}/bin/bzcat
+}

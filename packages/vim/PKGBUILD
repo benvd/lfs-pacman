@@ -1,0 +1,43 @@
+pkgname=vim
+pkgver=8.0.586
+pkgrel=1
+pkgdesc="Vi Improved, a highly configurable, improved version of the vi text editor"
+arch=('x86_64')
+url="http://www.vim.org/"
+license=('custom:vim')
+backup=('etc/vimrc')
+source=(${pkgname}-${pkgver}.tar.bz2
+	vimrc)
+
+prepare() {
+    cd "${pkgname}80"
+    echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+    sed -i '/call/{s/split/xsplit/;s/303/492/}' src/testdir/test_recover.vim
+}
+
+build() {
+    cd "${pkgname}80"
+    ./configure --prefix=/usr
+    make
+}
+
+check() {
+    cd "${pkgname}80"
+    make -j1 test 2>&1 > ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}80"
+    make DESTDIR=${pkgdir} install
+
+    ln -sv vim ${pkgdir}/usr/bin/vi
+    for L in  ${pkgdir}/usr/share/man/{,*/}man1/vim.1; do
+	ln -sv vim.1 $(dirname $L)/vi.1
+    done
+
+    install -vdm755 ${pkgdir}/usr/share/doc/${pkgname}-${pkgver}
+    ln -sv ../vim/vim80/doc ${pkgdir}/usr/share/doc/${pkgname}-${pkgver}
+
+    install -vdm755 ${pkgdir}/etc
+    install -vm644 ${srcdir}/vimrc ${pkgdir}/etc/vimrc
+}

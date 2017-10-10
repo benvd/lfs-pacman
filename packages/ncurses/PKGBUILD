@@ -1,0 +1,47 @@
+pkgname=ncurses
+pkgver=6.0
+pkgrel=1
+pkgdesc="System V Release 4.0 curses emulation library"
+arch=('x86_64')
+url="http://invisible-island.net/ncurses/ncurses.html"
+license=('MIT')
+source=(${pkgname}-${pkgver}.tar.gz)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    sed -i '/LIBTOOL_INSTALL/d' c++/Makefile.in
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    ./configure --prefix=/usr           \
+		--mandir=/usr/share/man \
+		--with-shared           \
+		--without-debug         \
+		--without-normal        \
+		--enable-pc-files       \
+		--enable-widec
+    make
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/lib
+    mv -v ${pkgdir}/usr/lib/libncursesw.so.6* ${pkgdir}/lib
+    ln -sfv ../../lib/$(readlink ${pkgdir}/usr/lib/libncursesw.so) ${pkgdir}/usr/lib/libncursesw.so
+
+    for lib in ncurses form panel menu ; do
+	rm -vf                    ${pkgdir}/usr/lib/lib${lib}.so
+	echo "INPUT(-l${lib}w)" > ${pkgdir}/usr/lib/lib${lib}.so
+	ln -sfv ${lib}w.pc        ${pkgdir}/usr/lib/pkgconfig/${lib}.pc
+    done
+
+    rm -vf                      ${pkgdir}/usr/lib/libcursesw.so
+    echo "INPUT(-lncursesw)" >  ${pkgdir}/usr/lib/libcursesw.so
+    ln -sfv libncurses.so       ${pkgdir}/usr/lib/libcurses.so
+
+    install -vdm755 ${pkgdir}/usr/share/doc/ncurses-6.0
+    cp -vR doc/*    ${pkgdir}/usr/share/doc/ncurses-6.0
+}

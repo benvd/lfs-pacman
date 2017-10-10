@@ -1,0 +1,37 @@
+pkgname=kbd
+pkgver=2.0.4
+pkgrel=1
+pkgdesc="Keytable files and keyboard utilities"
+arch=('x86_64')
+url="http://www.kbd-project.org/"
+license=('GPL')
+source=(${pkgname}-${pkgver}.tar.xz
+	kbd-2.0.4-backspace-1.patch)
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+
+    patch -Np1 -i ../kbd-2.0.4-backspace-1.patch
+
+    sed -i 's/\(RESIZECONS_PROGS=\)yes/\1no/g' configure
+    sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr --disable-vlock
+    make
+}
+
+check() {
+    cd "${pkgname}-${pkgver}"
+    make check 2>&1 | tee ${pkgname}-${pkgver}-check-log
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make DESTDIR=${pkgdir} install
+
+    install -vdm755 ${pkgdir}/usr/share/doc/kbd-${pkgver}
+    cp -Rv docs/doc/* ${pkgdir}/usr/share/doc/kbd-${pkgver}
+}
