@@ -20,5 +20,5 @@ check() {
 
 package() {
     cd "${pkgname}-${pkgver}"
-    make prefix=${pkgdir} install
+    make prefix=${pkgdir}/usr install
 }
