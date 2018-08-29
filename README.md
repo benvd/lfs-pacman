@@ -97,7 +97,7 @@ This will have installed, amongst others, the `makepkg.conf` and `pacman.conf` c
 
 ```
 CARCH="x86_64"
-CHOST="x86_64-pc-linux-gnu
+CHOST="x86_64-pc-linux-gnu"
 ```
 
 You can set your name and email address as the `PACKAGER` if you want.
