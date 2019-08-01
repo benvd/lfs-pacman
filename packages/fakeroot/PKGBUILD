@@ -3,7 +3,7 @@ pkgver=1.22
 pkgrel=2
 pkgdesc="Tool for simulating superuser privileges"
 arch=('x86_64')
-url="http://packages.debian.org/fakeroot"
+url="http://turul.canonical.com/pool/main/f/fakeroot/"
 license=('GPL')
 source=(${pkgname}_${pkgver}.orig.tar.bz2
 	silence-dlerror.patch)
